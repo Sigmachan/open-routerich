@@ -18,9 +18,18 @@ fi
 
 BACKUP_DIR="/root/zapret-universal-backup"
 
+run_module() { # local clone first, else fetch+pipe
+    _m="$1"; shift
+    if [ -n "$_self" ] && [ -f "$_self/modules/$_m.sh" ]; then sh "$_self/modules/$_m.sh" "$@"
+    else ZU_BASE_URL="$ZU_BASE_URL" sh -c "$(fetch_stdout "$ZU_BASE_URL/modules/$_m.sh")" -- "$@"; fi
+}
+
 log "Stopping & disabling DPI-bypass services..."
 manage_service youtubeUnblock  disable stop
 manage_service https-dns-proxy disable stop
+# remove the DNS layer added by the modules (DoH un-poisoning + malw geo-unblock)
+run_module doh-unpoison uninstall 2>/dev/null || true
+run_module malw-hosts   uninstall 2>/dev/null || true
 
 if [ -d "$BACKUP_DIR" ]; then
     log "Restoring config backups from $BACKUP_DIR ..."

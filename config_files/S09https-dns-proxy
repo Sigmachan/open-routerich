@@ -1,0 +1,19 @@
+#!/bin/sh
+# open-routerich :: Entware init for un-poisoned DNS.
+# Runs two DoH (https-dns-proxy) instances. Autostarted on boot by rc.unslung.
+# Edit the resolver lines below to change DoH providers.
+ENABLED=yes
+BIN=/opt/sbin/https-dns-proxy
+start() {
+	start-stop-daemon -S -b -m -p /tmp/hdp-5353.pid -x "$BIN" -- \
+		-a 127.0.0.1 -p 5353 -4 -b 94.140.14.14,94.140.15.15 -r https://dns.adguard-dns.com/dns-query
+	start-stop-daemon -S -b -m -p /tmp/hdp-5354.pid -x "$BIN" -- \
+		-a 127.0.0.1 -p 5354 -4 -b 8.8.8.8,8.8.4.4 -r https://dns.google/dns-query
+}
+stop() { killall https-dns-proxy 2>/dev/null; rm -f /tmp/hdp-5353.pid /tmp/hdp-5354.pid; }
+case "$1" in
+	start) [ "$ENABLED" = yes ] && start ;;
+	stop) stop ;;
+	restart) stop; sleep 1; start ;;
+	*) echo "usage: $0 {start|stop|restart}" ;;
+esac

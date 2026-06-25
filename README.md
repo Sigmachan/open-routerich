@@ -5,9 +5,10 @@
 Оригинал намертво привязан к одной модели и одной прошивке (`23.05.5`). Здесь всё захардкоженное определяется на лету: модель, архитектура, версия, секции UCI, пакетный менеджер. Работает от **OpenWrt 18.06 до 25.12 / SNAPSHOT**, включая **vendor-форки с read-only root** (Xiaomi на IPQ5424/IPQ9554).
 
 ```
-                ┌─ youtubeUnblock  (десинхронизация DPI: TLS ClientHello + QUIC)
-обход блокировок ┤─ https-dns-proxy (DoH: AdGuard / Google / Cloudflare / Comss)
-                ├─ dnsmasq redirect (гео-разблок 50 доменов через локальный DoH)
+                ┌─ doh-unpoison    (DoH AdGuard+Google: обходит DNS-отравление RKN на :53)
+обход блокировок ┤─ malw-hosts      (гео-разблок ~30k доменов через dns.malw.link SNI-прокси)
+                ├─ dpi-desync       (youtubeUnblock; ECM-aware, сам откатывается если ломает HTTPS)
+                ├─ https-dns-proxy  (DoH на мутабельном OpenWrt + dnsmasq-редирект)
                 ├─ QUIC block       (REJECT UDP 80/443 lan→wan)
                 ├─ AmneziaWG WARP   (модуль: туннель + WARP6/IPv6)
                 ├─ podkop           (модуль: доменный роутинг)
@@ -17,6 +18,19 @@
 Три способа поставить: **CLI** (`wget | sh`), **веб-панель прямо в роутере**, **десктопный GUI** (Linux/macOS/Windows).
 
 ---
+
+## Реальность на vendor/ECM-роутерах (Xiaomi IPQ и т.п.)
+
+На Xiaomi BE-серии (IPQ5424) с аппаратным **NSS/ECM-оффлоадом** проверено вживую, что именно работает:
+
+| Слой | На ECM-роутере | Что чинит |
+|---|:---:|---|
+| **doh-unpoison** (DoH) | ✅ работает | RKN травит DNS на :53 для всех резолверов (8.8.8.8/9.9.9.9/AdGuard/comss → `rutracker.org` отдаёт отравленный `94.230.*`). Шифрованный DoH возвращает настоящий IP. |
+| **malw-hosts** (гео) | ✅ работает | Сервисы, баняющие RU-IP со своей стороны (ChatGPT/Spotify/…). Чистый hosts-оверрайд, оффлоад не мешает. |
+| **dpi-desync** (youtubeUnblock) | ⚠️ не вывозит | NSS/ECM корёжит fake/frag-пакеты десинка → таргеты `000`. Пер-флоу exempt (`net.ecm.tcp_denied_ports`) на vendor-прошивке **инертен**; глобально гасить ECM нельзя (убьёт throughput). Модуль это детектит и **сам откатывается** — связь не ломается. |
+| **VLESS-туннель** | ✅ единственный для RKN-SNI | Для сайтов, заблокированных RKN по SNI, рабочий путь — туннель до достижимого сервера (sing-box/xray, userspace TUN; kernel-WG/TPROXY на vendor-ядре нет). |
+
+**Вывод:** на таком железе бесплатный «обход без сервера» = **DoH un-poison + malw гео-разблок** (это и закрывает большую часть). DPI-десинк — best-effort с авто-откатом. Полный обход RKN-SNI — только свой VLESS.
 
 ## Чем отличается от оригинала
 
@@ -65,6 +79,8 @@ wget -O - https://raw.githubusercontent.com/Sigmachan/open-routerich/main/uninst
 
 ```
 --no-quic / --no-redirect / --no-overrides
+--no-malw                      не ставить malw-гео-разблок (addn-hosts)
+--no-doh-unpoison              не ставить DoH un-poison (immutable+Entware)
 --doh-addr A#PORT   локальный DoH-резолвер для редиректов
 --immutable / --no-immutable   принудительный режим vendor-root
 --entware / --no-entware       путь через Entware (/opt на USB)
@@ -102,12 +118,21 @@ python3 gui/open-routerich-gui.py        # или: gui/run.sh  (mac/Linux) | gui
 ## Модули
 
 ```sh
+# DNS-слой (работает на vendor/ECM-роутерах — не трогает пакеты)
+sh modules/doh-unpoison.sh install   # 2× https-dns-proxy (DoH) -> dnsmasq noresolv, un-poison; off для отката
+sh modules/malw-hosts.sh   install   # ~30k гео-доменов dns.malw.link -> dnsmasq addn-hosts; update для обновления, off
+sh modules/dpi-desync.sh   try       # youtubeUnblock ECM-aware: сам откатывается если ломает HTTPS; check | off
+
+# Туннели/роутинг (нужен мутабельный root или kmod)
 sh modules/awg-warp.sh            # AmneziaWG WARP (авто-генерация), --manual для ручного ввода
 sh modules/warp6.sh               # IPv6 WARP поверх AmneziaWG (после awg-warp)
 sh modules/podkop.sh              # podkop (официальный инсталлер) + routerich-роутинг; --profile main|second|youtube
 sh modules/proxy.sh               # opera-proxy (:18080) + sing-box (tproxy :1100) — free-WARP цепочка
 ```
 
+- **doh-unpoison** — RKN травит DNS на :53 для ЛЮБОГО резолвера; поднимает локальный DoH и заворачивает dnsmasq на него (`noresolv`). Сентинел и watchdog-фоллбэк на ISP-DNS: LAN никогда не остаётся без резолва. Нужен `bind-dig` для health-проверки.
+- **malw-hosts** — статический гео-разблок (ChatGPT/Spotify/Notion и т.п., которые сами баняют RU-IP) через SNI-прокси dns.malw.link. Чистый hosts-оверрайд, **ECM-safe**.
+- **dpi-desync** — youtubeUnblock с детектом NSS/ECM, пер-флоу exempt-попыткой и **двойным сентинелом** (общая связь + реальное оживание таргетов): если десинк ломает HTTPS или не обходит — авто-откат, роутер в норме.
 - **awg-warp** тянет `kmod-amneziawg`/`amneziawg-tools`/`luci` из [awg-openwrt](https://github.com/Slava-Shchipunov/awg-openwrt) строго под версию/ядро.
 - **podkop** ставит podkop официальным способом itdoginfo и применяет тюнингованный роутинг (youtube/rutracker/instagram/discord + second-профиль на `127.0.0.1:18080`).
 - **proxy** = opera-proxy + sing-box; пара к `podkop --profile second`.

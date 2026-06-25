@@ -21,6 +21,8 @@
 #   --no-quic           do not add QUIC (UDP/80,443) reject rules
 #   --no-redirect       do not push the geo-unblock dnsmasq redirect list
 #   --no-overrides      do not add static A-record DNS overrides
+#   --no-malw           do not install the malw geo-unblock hosts (addn-hosts)
+#   --no-doh-unpoison   do not install Entware DoH un-poisoning (immutable mode)
 #   --doh-addr A#PORT   local DoH resolver for redirects (default: https-dns-proxy
 #                       127.0.0.1#5056, or 127.0.0.1#5353 in immutable mode = AdGuard Home)
 #   --immutable         force immutable/vendor mode (UCI-only, no opkg-into-/)
@@ -55,6 +57,7 @@ fi
 # options
 # ----------------------------------------------------------------------------
 DO_QUIC=1; DO_REDIRECT=1; DO_OVERRIDES=1; DO_CRON=0; ASSUME_YES=0
+DO_MALW=1; DO_DOH_UNPOISON=1
 LAN_ZONE="lan"; WAN_ZONE="wan"
 DOH_ADDR=""; FORCE_IMMUTABLE=""; FORCE_ENTWARE=""; PROFILE=""
 while [ $# -gt 0 ]; do
@@ -62,6 +65,8 @@ while [ $# -gt 0 ]; do
         --no-quic)      DO_QUIC=0 ;;
         --no-redirect)  DO_REDIRECT=0 ;;
         --no-overrides) DO_OVERRIDES=0 ;;
+        --no-malw)      DO_MALW=0 ;;
+        --no-doh-unpoison) DO_DOH_UNPOISON=0 ;;
         --doh-addr)     DOH_ADDR="$2"; shift ;;
         --immutable)    FORCE_IMMUTABLE=1 ;;
         --no-immutable) FORCE_IMMUTABLE=0 ;;
@@ -136,6 +141,11 @@ read_list() { # read_list <name>
     if [ -n "$_self" ] && [ -f "$_self/config_files/$_n" ]; then cat "$_self/config_files/$_n"
     elif [ -n "$ZU_BASE_URL" ]; then fetch_stdout "$ZU_BASE_URL/config_files/$_n"; fi
 }
+run_module() { # run_module <module-basename> [args...] — local clone first, else fetch+pipe
+    _m="$1"; shift
+    if [ -n "$_self" ] && [ -f "$_self/modules/$_m.sh" ]; then sh "$_self/modules/$_m.sh" "$@"
+    else ZU_BASE_URL="$ZU_BASE_URL" sh -c "$(fetch_stdout "$ZU_BASE_URL/modules/$_m.sh")" -- "$@"; fi
+}
 
 # ============================================================================
 log "[1/7] Updating package lists..."
@@ -167,20 +177,34 @@ fi
 
 DNSSEC="$(dnsmasq_section)"
 log "dnsmasq UCI section: dhcp.$DNSSEC ; DoH resolver: $DOH_REDIRECT"
+backup_once dhcp
 uci set "dhcp.$DNSSEC.confdir=/tmp/dnsmasq.d" 2>/dev/null || true
 uci commit dhcp 2>/dev/null || true
 
 # ============================================================================
 log "[3/7] DoH (https-dns-proxy) ..."
 if [ "$IMMUTABLE" = 1 ]; then
-    warn "immutable: not installing https-dns-proxy. Redirects point at $DOH_ADDR"
-    warn "  -> make sure a DoH resolver listens there (AdGuard Home / Entware https-dns-proxy)."
+    if [ "$ENTWARE" = 1 ] && [ "$DO_DOH_UNPOISON" = 1 ]; then
+        log "immutable+Entware: installing real DoH un-poisoning (https-dns-proxy)..."
+        run_module doh-unpoison install || warn "doh-unpoison failed; falling back to redirect-only ($DOH_ADDR)"
+    else
+        warn "immutable: not installing https-dns-proxy. Redirects point at $DOH_ADDR"
+        warn "  -> provide a DoH resolver there (Entware https-dns-proxy / AdGuard Home), or run modules/doh-unpoison.sh"
+    fi
 else
     ensure_pkg https-dns-proxy 0 luci-app-doh-proxy
     ensure_pkg luci-app-https-dns-proxy 0
     ensure_pkg luci-i18n-https-dns-proxy-ru 0
     push_config https-dns-proxy && log "https-dns-proxy config applied" \
         || warn "no https-dns-proxy template available; keeping existing config"
+fi
+
+# ============================================================================
+log "[3b/7] malw geo-unblock hosts ..."
+if [ "$DO_MALW" = 1 ]; then
+    run_module malw-hosts install || warn "malw-hosts geo-unblock failed (continuing)"
+else
+    log "malw geo-unblock skipped (--no-malw)"
 fi
 
 # ============================================================================
@@ -225,10 +249,16 @@ install_yu_entware() {
     rm -f /tmp/yu-entware.ipk; YU_OK=1
     [ -d /opt/etc/config ] && push_config youtubeUnblock /opt/etc/config && log "youtubeUnblock config -> /opt/etc/config"
     log "youtubeUnblock installed into Entware ($_ea). Service: /opt/etc/init.d/S*youtubeUnblock*"
-    for s in /opt/etc/init.d/S*youtubeUnblock*; do [ -x "$s" ] && "$s" restart 2>/dev/null || true; done
+    # ECM-aware: do NOT auto-start desync on vendor/NSS routers — it can corrupt
+    # HTTPS via hardware offload. Neutralize any S* autostart (rc.unslung); the
+    # operator enables it via the sentinel-guarded module which auto-reverts.
+    for s in /opt/etc/init.d/S*youtubeUnblock*; do [ -f "$s" ] && mv "$s" "${s%/*}/K${s##*/S}.disabled" 2>/dev/null || true; done
 }
 if [ "$IMMUTABLE" = 1 ]; then
-    if [ "$ENTWARE" = 1 ]; then install_yu_entware
+    if [ "$ENTWARE" = 1 ]; then
+        install_yu_entware
+        run_module dpi-desync check 2>/dev/null || true
+        log "DPI desync is ECM-gated here. Test it safely (auto-reverts on breakage): sh modules/dpi-desync.sh try"
     else warn "immutable + no Entware: skipping youtubeUnblock (DNS/QUIC only). See README (Entware on USB)."; fi
 else
     install_yu_system
