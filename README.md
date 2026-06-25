@@ -6,7 +6,7 @@
 
 ```
                 ┌─ doh-unpoison    (DoH AdGuard+Google: обходит DNS-отравление RKN на :53)
-обход блокировок ┤─ malw-hosts      (гео-разблок ~30k доменов через dns.malw.link SNI-прокси)
+обход блокировок ┤─ malw-hosts      (гео-разблок dns.malw.link SNI-прокси; adblock-синкхол отфильтрован)
                 ├─ dpi-desync       (youtubeUnblock; ECM-aware, сам откатывается если ломает HTTPS)
                 ├─ https-dns-proxy  (DoH на мутабельном OpenWrt + dnsmasq-редирект)
                 ├─ QUIC block       (REJECT UDP 80/443 lan→wan)
@@ -120,7 +120,7 @@ python3 gui/open-routerich-gui.py        # или: gui/run.sh  (mac/Linux) | gui
 ```sh
 # DNS-слой (работает на vendor/ECM-роутерах — не трогает пакеты)
 sh modules/doh-unpoison.sh install   # 2× https-dns-proxy (DoH) -> dnsmasq noresolv, un-poison; off для отката
-sh modules/malw-hosts.sh   install   # ~30k гео-доменов dns.malw.link -> dnsmasq addn-hosts; update для обновления, off
+sh modules/malw-hosts.sh   install   # dns.malw.link гео-разблок -> dnsmasq addn-hosts (синкхол отфильтрован); update, off
 sh modules/dpi-desync.sh   try       # youtubeUnblock ECM-aware: сам откатывается если ломает HTTPS; check | off
 
 # Туннели/роутинг (нужен мутабельный root или kmod)
@@ -131,7 +131,7 @@ sh modules/proxy.sh               # opera-proxy (:18080) + sing-box (tproxy :110
 ```
 
 - **doh-unpoison** — RKN травит DNS на :53 для ЛЮБОГО резолвера; поднимает локальный DoH и заворачивает dnsmasq на него (`noresolv`). Сентинел и watchdog-фоллбэк на ISP-DNS: LAN никогда не остаётся без резолва. Нужен `bind-dig` для health-проверки.
-- **malw-hosts** — статический гео-разблок (ChatGPT/Spotify/Notion и т.п., которые сами баняют RU-IP) через SNI-прокси dns.malw.link. Чистый hosts-оверрайд, **ECM-safe**.
+- **malw-hosts** — статический гео-разблок (ChatGPT/Spotify/Notion и т.п., которые сами баняют RU-IP) через SNI-прокси dns.malw.link. Чистый hosts-оверрайд, **ECM-safe**. По умолчанию ставится ТОЛЬКО гео-разблок (real-IP прокси-маппинги, ~200 записей); ad/tracker-синкхол malw (`0.0.0.0`, ~30k) **отфильтрован** — он глушит легитимные asset/CDN-домены (`csi.gstatic.com` и т.п.) и ломает иконки/картинки на сайтах. `MALW_BLOCKLIST=1` — добавить полный adblock-список.
 - **dpi-desync** — youtubeUnblock с детектом NSS/ECM, пер-флоу exempt-попыткой и **двойным сентинелом** (общая связь + реальное оживание таргетов): если десинк ломает HTTPS или не обходит — авто-откат, роутер в норме.
 - **awg-warp** тянет `kmod-amneziawg`/`amneziawg-tools`/`luci` из [awg-openwrt](https://github.com/Slava-Shchipunov/awg-openwrt) строго под версию/ядро.
 - **podkop** ставит podkop официальным способом itdoginfo и применяет тюнингованный роутинг (youtube/rutracker/instagram/discord + second-профиль на `127.0.0.1:18080`).

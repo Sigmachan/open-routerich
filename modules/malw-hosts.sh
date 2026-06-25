@@ -59,23 +59,32 @@ fetch_hosts() {
 }
 
 install_malw() {
-    local have=0
-    [ -f "$HOSTS" ] && [ "$(grep -cE '^[0-9a-fA-F:.]+[[:space:]]+' "$HOSTS" 2>/dev/null)" -ge 1000 ] && have=1
+    local RAW=/tmp/malw-hosts.raw have=0
+    [ -f "$HOSTS" ] && [ "$(grep -cE '^[0-9a-fA-F:.]+[[:space:]]+' "$HOSTS" 2>/dev/null || true)" -ge 50 ] && have=1
     if [ "$ACTION" = update ] || [ "$have" = 0 ]; then
         if fetch_hosts; then
-            # strip CRs, keep only comment + valid host lines
-            tr -d '\r' < "$TMP" | grep -E '^[[:space:]]*#|^[0-9a-fA-F:.]+[[:space:]]+[A-Za-z0-9._-]+|^[[:space:]]*$' > "$HOSTS" || cp "$TMP" "$HOSTS"
-            rm -f "$TMP" "$TMP.json"
+            tr -d '\r' < "$TMP" > "$RAW"; rm -f "$TMP" "$TMP.json"
         elif [ "$have" = 1 ]; then
-            warn "fetch failed; keeping existing $HOSTS"
+            warn "fetch failed; re-normalizing existing $HOSTS"; cp "$HOSTS" "$RAW"
         else
             die "could not fetch malw hosts from any source (DPI? set GH_TOKEN or MALW_SOURCES)"
         fi
     else
-        log "existing $HOSTS valid; skipping fetch (run 'update' to refresh)"
+        log "existing $HOSTS present; re-normalizing (run 'update' to refresh from source)"; cp "$HOSTS" "$RAW"
     fi
+    # NORMALIZE: keep only valid "IP host" lines. By DEFAULT drop the ad/tracker
+    # sinkhole (0.0.0.0 / :: / 127.x) — malw's list null-routes ~30k domains incl
+    # legit asset/CDN hosts (csi.gstatic.com, cloudfront, ...) which breaks site
+    # icons/images. Geo-unblock = only the real-IP proxy mappings. Set
+    # MALW_BLOCKLIST=1 to keep the full adblock sinkhole as well.
+    if [ "${MALW_BLOCKLIST:-0}" = 1 ]; then
+        grep -E '^[0-9a-fA-F:.]+[[:space:]]+[A-Za-z0-9._-]' "$RAW" > "$HOSTS"
+    else
+        grep -E '^[0-9a-fA-F:.]+[[:space:]]+[A-Za-z0-9._-]' "$RAW" | grep -vE '^[[:space:]]*(0\.0\.0\.0|::|127\.)' > "$HOSTS"
+    fi
+    rm -f "$RAW"
     local n; n=$(grep -cE '^[0-9a-fA-F:.]+[[:space:]]+' "$HOSTS" || true); n=${n:-0}
-    log "using $HOSTS ($n entries, $(wc -c < "$HOSTS") bytes)"
+    log "using $HOSTS ($n entries$([ "${MALW_BLOCKLIST:-0}" = 1 ] && echo ', incl adblock sinkhole' || echo ', geo-unblock only'), $(wc -c < "$HOSTS") bytes)"
     # validate via dnsmasq before wiring
     if command -v dnsmasq >/dev/null 2>&1; then
         dnsmasq --test --addn-hosts="$HOSTS" 2>&1 | grep -qi 'syntax check OK' || { warn "dnsmasq rejected the hosts file; aborting"; return 1; }
