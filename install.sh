@@ -328,6 +328,22 @@ manage_service dnsmasq "" restart
 manage_service odhcpd  "" restart
 [ "$DO_QUIC" = 1 ] && manage_service firewall "" restart
 
+# immutable boot-persist: /etc is ramfs and resets on reboot. The DNS core is
+# re-applied by /data/dns-stack.sh; this restores the full UCI config (DoH
+# redirect + QUIC block + overrides) once per boot by re-running this installer
+# from the local clone. Marker in /tmp => runs once per boot.
+if [ "$IMMUTABLE" = 1 ] && [ -n "$_self" ] && [ -f /etc/crontabs/root ]; then
+    cat > /data/routerych-boot.sh <<EOF
+#!/bin/sh
+[ -f /tmp/.routerych-applied ] && exit 0
+[ -f "$_self/install.sh" ] || exit 0
+sh "$_self/install.sh" --immutable --entware -y >/tmp/routerych-boot.log 2>&1 && touch /tmp/.routerych-applied
+EOF
+    chmod +x /data/routerych-boot.sh
+    grep -q routerych-boot.sh /etc/crontabs/root || { echo '*/5 * * * * /data/routerych-boot.sh' >> /etc/crontabs/root; manage_service cron "" restart 2>/dev/null || /etc/init.d/crond restart 2>/dev/null || true; }
+    touch /tmp/.routerych-applied
+    log "boot-persist: /data/routerych-boot.sh re-applies full UCI config after reboot"
+fi
 if [ "$DO_CRON" = 1 ] && [ -n "$ZU_BASE_URL" ]; then
     _line="0 4 * * * ZU_BASE_URL=$ZU_BASE_URL sh -c \"\$(wget -qO- $ZU_BASE_URL/install.sh)\" -- -y"
     grep -qF "$ZU_BASE_URL/install.sh" /etc/crontabs/root 2>/dev/null \

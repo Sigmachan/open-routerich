@@ -30,6 +30,12 @@ manage_service https-dns-proxy disable stop
 # remove the DNS layer added by the modules (DoH un-poisoning + malw geo-unblock)
 run_module doh-unpoison uninstall 2>/dev/null || true
 run_module malw-hosts   uninstall 2>/dev/null || true
+# remove the immutable boot-persist (re-apply-on-reboot)
+if [ -f /etc/crontabs/root ]; then
+    sed -i '\#/data/routerych-boot.sh#d' /etc/crontabs/root
+    manage_service cron "" restart 2>/dev/null || /etc/init.d/crond restart 2>/dev/null || true
+fi
+rm -f /data/routerych-boot.sh /tmp/.routerych-applied
 
 if [ -d "$BACKUP_DIR" ]; then
     log "Restoring config backups from $BACKUP_DIR ..."
