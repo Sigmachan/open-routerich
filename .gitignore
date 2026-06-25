@@ -1,0 +1,5 @@
+.sdkbuild/
+output/
+*.ipk
+*.apk
+*.tmp

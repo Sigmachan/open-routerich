@@ -1,0 +1,5 @@
+chatgpt.com 83.220.169.155
+openai.com 83.220.169.155
+webrtc.chatgpt.com 83.220.169.155
+ios.chat.openai.com 83.220.169.155
+searchgpt.com 83.220.169.155
