@@ -43,7 +43,7 @@ fetch_hosts() {
         [ -s "$TMP" ] || continue
         head -1 "$TMP" | grep -qi '<!DOCTYPE\|<html' && { warn "got HTML, not raw"; continue; }
         # need a meaningful number of "IP host" lines
-        local n; n=$(grep -cE '^[0-9a-fA-F:.]+[[:space:]]+[A-Za-z0-9._-]+' "$TMP" 2>/dev/null || echo 0)
+        local n; n=$(grep -cE '^[0-9a-fA-F:.]+[[:space:]]+[A-Za-z0-9._-]+' "$TMP" 2>/dev/null || true); n=${n:-0}
         if [ "$n" -ge 1000 ]; then log "fetched $n host entries"; return 0; fi
         warn "only $n entries from $u, trying next"
     done
@@ -74,7 +74,7 @@ install_malw() {
     else
         log "existing $HOSTS valid; skipping fetch (run 'update' to refresh)"
     fi
-    local n; n=$(grep -cE '^[0-9a-fA-F:.]+[[:space:]]+' "$HOSTS")
+    local n; n=$(grep -cE '^[0-9a-fA-F:.]+[[:space:]]+' "$HOSTS" || true); n=${n:-0}
     log "using $HOSTS ($n entries, $(wc -c < "$HOSTS") bytes)"
     # validate via dnsmasq before wiring
     if command -v dnsmasq >/dev/null 2>&1; then
@@ -88,7 +88,7 @@ install_malw() {
     # sentinel
     local up norm g
     up=$(pidof dnsmasq >/dev/null && echo 1 || echo 0)
-    norm=$(nslookup ya.ru 127.0.0.1 2>/dev/null | grep -c 'Address 1')
+    norm=$(nslookup ya.ru 127.0.0.1 2>/dev/null | grep -c 'Address 1' || true)
     g=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 https://www.google.com 2>/dev/null || echo 000)
     if [ "$up" = 1 ] && [ "$norm" -ge 1 ]; then
         local probe; probe=$(grep -m1 -iE '^[0-9].*(chatgpt|spotify|openai)\b' "$HOSTS" | awk '{print $2}')

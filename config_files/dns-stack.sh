@@ -40,9 +40,11 @@ if [ "$healthy" = 1 ]; then
 	done
 	[ "$(uci -q get dhcp.@dnsmasq[0].noresolv)" = 1 ] || { uci set dhcp.@dnsmasq[0].noresolv='1'; CHG=1; }
 else
-	# SAFETY FALLBACK: DoH down -> allow ISP DNS so the LAN stays online
+	# SAFETY FALLBACK: DoH down -> allow ISP DNS so the LAN stays online, and drop
+	# the dead DoH server lines so strictorder doesn't add a timeout per query.
 	if [ "$(uci -q get dhcp.@dnsmasq[0].noresolv)" = 1 ]; then
 		uci set dhcp.@dnsmasq[0].noresolv='0'; CHG=1
+		for p in $DOH_PORTS; do uci -q del_list dhcp.@dnsmasq[0].server="127.0.0.1#$p" 2>/dev/null && CHG=1; done
 		logger -t dns-stack "DoH unhealthy: temporary ISP-DNS fallback (poisoned but online)"
 	fi
 fi

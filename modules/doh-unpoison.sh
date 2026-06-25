@@ -106,9 +106,9 @@ install_doh() {
     local up norm rt g
     up=$(pidof dnsmasq >/dev/null && echo 1 || echo 0)
     if [ -x /opt/bin/dig ]; then
-        norm=$(/opt/bin/dig @127.0.0.1 ya.ru +short +time=4 +tries=1 2>/dev/null | grep -cE '^[0-9]+\.')
+        norm=$(/opt/bin/dig @127.0.0.1 ya.ru +short +time=4 +tries=1 2>/dev/null | grep -cE '^[0-9]+\.' || true)
     else
-        norm=$(nslookup ya.ru 127.0.0.1 2>/dev/null | sed -n '/[Nn]ame:/,$p' | grep -cE '([0-9]{1,3}\.){3}[0-9]{1,3}')
+        norm=$(nslookup ya.ru 127.0.0.1 2>/dev/null | sed -n '/[Nn]ame:/,$p' | grep -cE '([0-9]{1,3}\.){3}[0-9]{1,3}' || true)
     fi
     if [ "$up" = 1 ] && [ "$norm" -ge 1 ]; then
         if [ -x /opt/bin/dig ]; then rt=$(/opt/bin/dig @127.0.0.1 rutracker.org +short +time=4 +tries=1 2>/dev/null | grep -E '^[0-9]' | head -1)
