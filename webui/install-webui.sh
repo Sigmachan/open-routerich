@@ -40,8 +40,12 @@ mkdir -p "$DEST"
 
 # populate DEST: from local clone, else download repo tarball
 if [ -n "$_self" ] && [ -f "$_self/install.sh" ]; then
-    log "Copying toolkit from local clone..."
-    cp -rf "$_self/." "$DEST/"
+    if [ "$_self" = "$DEST" ]; then
+        log "Already in install dir, skipping copy."
+    else
+        log "Copying toolkit from local clone..."
+        cp -rf "$_self/." "$DEST/"
+    fi
 else
     log "Downloading toolkit tarball..."
     fetch_to "$TARBALL" /tmp/open-routerich.tgz || die "tarball download failed"
