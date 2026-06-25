@@ -1,5 +1,5 @@
 # shellcheck shell=ash
-# openwrt-zapret-universal :: lib/common.sh
+# open-routerich :: lib/common.sh
 # Shared POSIX-sh helpers for a *universal* (any-router) port of the routerich
 # RouterichAX3000_configs toolkit. No model guard, no hardcoded arch / version /
 # UCI section ids. Source this from a runtime script:

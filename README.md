@@ -1,4 +1,4 @@
-# openwrt-zapret-universal
+# open-routerich
 
 Универсальный порт проекта **[routerich/RouterichAX3000_configs](https://github.com/routerich/RouterichAX3000_configs)** — обход DPI-блокировок для **любого** роутера на OpenWrt, а не только для Routerich AX3000.
 
@@ -51,20 +51,20 @@
 
 ```sh
 # полный набор: youtubeUnblock + DoH + dnsmasq-редирект + QUIC-блок
-wget -O - https://raw.githubusercontent.com/Sigmachan/openwrt-zapret-universal/main/install.sh | sh
+wget -O - https://raw.githubusercontent.com/Sigmachan/open-routerich/main/install.sh | sh
 ```
 
 Откат:
 
 ```sh
-wget -O - https://raw.githubusercontent.com/Sigmachan/openwrt-zapret-universal/main/uninstall.sh | sh
+wget -O - https://raw.githubusercontent.com/Sigmachan/open-routerich/main/uninstall.sh | sh
 ```
 
 Либо клонировать и запускать локально (тогда сеть нужна только для пакетов):
 
 ```sh
-git clone https://github.com/Sigmachan/openwrt-zapret-universal
-cd openwrt-zapret-universal
+git clone https://github.com/Sigmachan/open-routerich
+cd open-routerich
 sh install.sh
 ```
 

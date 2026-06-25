@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# openwrt-zapret-universal :: build/build-packages.sh
+# open-routerich :: build/build-packages.sh
 # Recompile the arch/kernel-specific pieces of the toolkit for ANY OpenWrt
 # target that has no prebuilt release asset:
 #   * youtubeUnblock + luci-app-youtubeUnblock   (Waujito/youtubeUnblock)

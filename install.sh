@@ -1,5 +1,5 @@
 #!/bin/sh
-# openwrt-zapret-universal :: install.sh
+# open-routerich :: install.sh
 # Universal port of routerich `configure_zaprets.sh` / `universal_config.sh`.
 # DPI bypass for ANY OpenWrt router: youtubeUnblock (DPI desync) + https-dns-proxy
 # (DoH) + dnsmasq geo-unblock redirect + optional QUIC block.
@@ -15,7 +15,7 @@
 #
 # Usage:
 #   sh install.sh [options]
-#   sh -c "$(wget -qO- https://raw.githubusercontent.com/Sigmachan/openwrt-zapret-universal/main/install.sh)"
+#   sh -c "$(wget -qO- https://raw.githubusercontent.com/Sigmachan/open-routerich/main/install.sh)"
 #
 # Options:
 #   --no-quic           do not add QUIC (UDP/80,443) reject rules
@@ -38,7 +38,7 @@ set -eu
 # ----------------------------------------------------------------------------
 # bootstrap shared library (local clone first, remote when piped)
 # ----------------------------------------------------------------------------
-ZU_BASE_URL="${ZU_BASE_URL:-https://raw.githubusercontent.com/Sigmachan/openwrt-zapret-universal/main}"
+ZU_BASE_URL="${ZU_BASE_URL:-https://raw.githubusercontent.com/Sigmachan/open-routerich/main}"
 _self="$(cd "$(dirname -- "$0" 2>/dev/null)" 2>/dev/null && pwd || true)"
 if [ -n "$_self" ] && [ -f "$_self/lib/common.sh" ]; then
     . "$_self/lib/common.sh"

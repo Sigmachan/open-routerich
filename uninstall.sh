@@ -1,10 +1,10 @@
 #!/bin/sh
-# openwrt-zapret-universal :: uninstall.sh
+# open-routerich :: uninstall.sh
 # Universal port of routerich off_*.sh — restores backups taken by install.sh
 # and disables the services it enabled. Section ids are resolved dynamically.
 set -eu
 
-ZU_BASE_URL="${ZU_BASE_URL:-https://raw.githubusercontent.com/Sigmachan/openwrt-zapret-universal/main}"
+ZU_BASE_URL="${ZU_BASE_URL:-https://raw.githubusercontent.com/Sigmachan/open-routerich/main}"
 _self="$(cd "$(dirname -- "$0" 2>/dev/null)" 2>/dev/null && pwd || true)"
 if [ -n "$_self" ] && [ -f "$_self/lib/common.sh" ]; then
     . "$_self/lib/common.sh"

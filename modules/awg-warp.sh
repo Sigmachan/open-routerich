@@ -1,5 +1,5 @@
 #!/bin/sh
-# openwrt-zapret-universal :: modules/awg-warp.sh
+# open-routerich :: modules/awg-warp.sh
 # Universal port of routerich awg_config.sh — AmneziaWG WARP tunnel for ANY
 # OpenWrt router. kmod/tools/luci are pulled from Slava-Shchipunov/awg-openwrt
 # (release tag == OpenWrt version), arch/target/subtarget detected at runtime.
@@ -9,7 +9,7 @@
 # Usage: sh modules/awg-warp.sh [--manual] [--iface awg10] [--lan-zone lan]
 set -eu
 
-ZU_BASE_URL="${ZU_BASE_URL:-https://raw.githubusercontent.com/Sigmachan/openwrt-zapret-universal/main}"
+ZU_BASE_URL="${ZU_BASE_URL:-https://raw.githubusercontent.com/Sigmachan/open-routerich/main}"
 _self="$(cd "$(dirname -- "$0" 2>/dev/null)/.." 2>/dev/null && pwd || true)"
 if [ -n "$_self" ] && [ -f "$_self/lib/common.sh" ]; then
     . "$_self/lib/common.sh"
