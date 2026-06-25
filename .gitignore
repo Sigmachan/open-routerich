@@ -3,3 +3,5 @@ output/
 *.ipk
 *.apk
 *.tmp
+__pycache__/
+*.pyc
