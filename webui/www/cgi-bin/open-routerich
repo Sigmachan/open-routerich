@@ -1,0 +1,73 @@
+#!/bin/sh
+# open-routerich :: webui CGI backend (uhttpd)
+# Serves a tiny JSON API that drives install.sh / uninstall.sh / modules from
+# the writable install dir. Runs as root via uhttpd CGI. Immutable-safe.
+#
+# Endpoints (action= in QUERY_STRING):
+#   status                       -> router + install state JSON
+#   apply   (POST quic,redirect,overrides,doh_addr) -> run install.sh
+#   uninstall                    -> run uninstall.sh
+#   module  (POST name=awg|warp6|podkop|proxy)       -> run a module
+
+# repo root = .../webui/www/cgi-bin/open-routerich -> up three
+SELF="${SCRIPT_FILENAME:-$0}"
+ROOT="$(cd "$(dirname "$SELF")/../../.." 2>/dev/null && pwd)"
+[ -f "$ROOT/lib/common.sh" ] && . "$ROOT/lib/common.sh" 2>/dev/null
+
+emit() { printf 'Status: 200 OK\r\nContent-Type: application/json\r\nCache-Control: no-store\r\n\r\n%s' "$1"; }
+json_escape() { sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | awk 'BEGIN{ORS="\\n"}{print}'; }
+
+# read POST body
+BODY=""
+if [ "${REQUEST_METHOD:-GET}" = POST ] && [ -n "${CONTENT_LENGTH:-}" ]; then
+    BODY="$(head -c "$CONTENT_LENGTH" 2>/dev/null)"
+fi
+urldecode() { _d="$(printf '%s' "$1" | sed 's/+/ /g; s/%/\\x/g')"; printf '%b' "$_d"; }
+getp() { urldecode "$(printf '%s' "$BODY" | tr '&' '\n' | sed -n "s/^$1=//p" | head -n1)"; }
+qparam() { printf '%s' "${QUERY_STRING:-}" | tr '&' '\n' | sed -n "s/^$1=//p" | head -n1; }
+
+ACTION="$(qparam action)"
+
+bool() { [ "$1" = 1 ] && echo 1 || echo 0; }
+have_yu() { pm_installed youtubeUnblock 2>/dev/null && return 0; detect_entware 2>/dev/null && entware_installed youtubeUnblock 2>/dev/null; }
+
+run_status() {
+    model="$(detect_model 2>/dev/null)"; ver="$(detect_version 2>/dev/null)"; arch="$(detect_pkgarch 2>/dev/null)"
+    imm=0; detect_immutable 2>/dev/null && imm=1
+    ent=0; detect_entware 2>/dev/null && ent=1
+    yu=0; have_yu && yu=1
+    doh=0; pm_installed https-dns-proxy 2>/dev/null && doh=1
+    red=0; grep -q "/127.0.0.1#5\|#5353\|xbox.com" /etc/config/dhcp 2>/dev/null && red=1
+    quic=0; grep -q "Block_UDP_443" /etc/config/firewall 2>/dev/null && quic=1
+    dohaddr="127.0.0.1#5056"; [ "$imm" = 1 ] && dohaddr="127.0.0.1#5353"
+    emit "{\"model\":\"$model\",\"version\":\"$ver\",\"arch\":\"$arch\",\"immutable\":$imm,\"entware\":$ent,\"yu\":$yu,\"doh\":$doh,\"redirect\":$red,\"quic\":$quic,\"doh_addr\":\"$dohaddr\"}"
+}
+
+run_cmd() { # run_cmd <shell-command...> ; returns JSON {log:...}
+    out="$( ( "$@" ) 2>&1 | json_escape )"
+    emit "{\"log\":\"$out\"}"
+}
+
+case "$ACTION" in
+    status) run_status ;;
+    apply)
+        set -- sh "$ROOT/install.sh" -y
+        [ "$(getp quic)" = 0 ]      && set -- "$@" --no-quic
+        [ "$(getp redirect)" = 0 ]  && set -- "$@" --no-redirect
+        [ "$(getp overrides)" = 0 ] && set -- "$@" --no-overrides
+        _da="$(getp doh_addr)"; [ -n "$_da" ] && set -- "$@" --doh-addr "$_da"
+        run_cmd "$@" ;;
+    uninstall)
+        run_cmd sh "$ROOT/uninstall.sh" ;;
+    module)
+        name="$(getp name)"; [ -z "$name" ] && name="$(qparam name)"
+        case "$name" in
+            awg)    run_cmd sh "$ROOT/modules/awg-warp.sh" ;;
+            warp6)  run_cmd sh "$ROOT/modules/warp6.sh" ;;
+            podkop) run_cmd sh "$ROOT/modules/podkop.sh" ;;
+            proxy)  run_cmd sh "$ROOT/modules/proxy.sh" ;;
+            *)      emit "{\"log\":\"unknown module: $name\"}" ;;
+        esac ;;
+    *)
+        emit "{\"log\":\"unknown action\"}" ;;
+esac

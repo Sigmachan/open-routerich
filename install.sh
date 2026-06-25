@@ -178,6 +178,7 @@ if [ "$IMMUTABLE" = 1 ]; then
 else
     ensure_pkg https-dns-proxy 0 luci-app-doh-proxy
     ensure_pkg luci-app-https-dns-proxy 0
+    ensure_pkg luci-i18n-https-dns-proxy-ru 0
     push_config https-dns-proxy && log "https-dns-proxy config applied" \
         || warn "no https-dns-proxy template available; keeping existing config"
 fi
@@ -288,6 +289,9 @@ fi
 
 # ============================================================================
 log "[7/7] Enabling services & restarting..."
+# routerich parity: disable routing tools that conflict with the DPI-only path
+manage_service podkop disable stop
+manage_service ruantiblock disable stop
 [ "$IMMUTABLE" = 1 ] || manage_service https-dns-proxy enable start
 [ "$YU_OK" = 1 ] && [ "$IMMUTABLE" = 0 ] && manage_service youtubeUnblock enable restart
 manage_service dnsmasq "" restart

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>open-routerich</title>
+<style>
+  :root{
+    --bg:#0a0c12; --bg2:#10131c; --glass:rgba(255,255,255,.06); --glass2:rgba(255,255,255,.09);
+    --stroke:rgba(255,255,255,.12); --txt:#eef1f7; --mut:#9aa3b5; --accent:#6ea8ff; --accent2:#7af7c8;
+    --ok:#54e08a; --warn:#ffd166; --err:#ff6b81; --radius:18px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,sans-serif;
+       color:var(--txt);background:
+       radial-gradient(1200px 700px at 80% -10%,rgba(110,168,255,.16),transparent 60%),
+       radial-gradient(900px 600px at -10% 110%,rgba(122,247,200,.12),transparent 55%),
+       var(--bg);min-height:100vh}
+  .wrap{max-width:880px;margin:0 auto;padding:28px 18px 80px}
+  header{display:flex;align-items:center;gap:14px;margin:8px 0 22px}
+  .logo{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:24px;
+        background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 8px 30px rgba(110,168,255,.35)}
+  h1{font-size:22px;margin:0;letter-spacing:.2px}
+  .sub{color:var(--mut);font-size:13px;margin-top:2px}
+  .card{background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);
+        border:1px solid var(--stroke);border-radius:var(--radius);padding:18px 18px;margin:14px 0;
+        box-shadow:0 10px 40px rgba(0,0,0,.35)}
+  .card h2{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--mut);margin:0 0 14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .stat{background:var(--glass2);border:1px solid var(--stroke);border-radius:14px;padding:12px 14px}
+  .stat .k{color:var(--mut);font-size:12px}
+  .stat .v{font-size:16px;font-weight:600;margin-top:3px;word-break:break-word}
+  .pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600}
+  .pill.on{background:rgba(84,224,138,.16);color:var(--ok)}
+  .pill.off{background:rgba(255,107,129,.16);color:var(--err)}
+  .pill.warn{background:rgba(255,209,102,.16);color:var(--warn)}
+  .row{display:flex;align-items:center;justify-content:space-between;padding:11px 4px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .row:last-child{border-bottom:0}
+  .row .lbl{font-weight:500}.row .desc{color:var(--mut);font-size:12px;margin-top:2px}
+  .sw{position:relative;width:46px;height:27px;flex:0 0 auto}
+  .sw input{opacity:0;width:0;height:0}
+  .sw span{position:absolute;inset:0;background:rgba(255,255,255,.14);border-radius:999px;transition:.2s;cursor:pointer}
+  .sw span:before{content:"";position:absolute;height:21px;width:21px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+  .sw input:checked+span{background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .sw input:checked+span:before{transform:translateX(19px)}
+  input[type=text]{background:var(--glass2);border:1px solid var(--stroke);color:var(--txt);border-radius:10px;
+        padding:9px 12px;width:170px;font:inherit;outline:none}
+  input[type=text]:focus{border-color:var(--accent)}
+  .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+  button{font:inherit;font-weight:600;border:1px solid var(--stroke);border-radius:12px;padding:11px 18px;cursor:pointer;
+         color:var(--txt);background:var(--glass2);transition:.15s;display:inline-flex;gap:8px;align-items:center}
+  button:hover{transform:translateY(-1px);background:rgba(255,255,255,.13)}
+  button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#06131f;border:0}
+  button.danger{background:rgba(255,107,129,.15);color:var(--err);border-color:rgba(255,107,129,.3)}
+  button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .mods{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+  .mod{background:var(--glass2);border:1px solid var(--stroke);border-radius:14px;padding:13px;cursor:pointer;transition:.15s}
+  .mod:hover{background:rgba(255,255,255,.12);transform:translateY(-1px)}
+  .mod .t{font-weight:600}.mod .d{color:var(--mut);font-size:12px;margin-top:3px}
+  pre#log{background:#05070c;border:1px solid var(--stroke);border-radius:14px;padding:14px;margin-top:8px;
+       max-height:320px;overflow:auto;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#c7d0e0;white-space:pre-wrap}
+  .foot{color:var(--mut);font-size:12px;text-align:center;margin-top:22px}
+  a{color:var(--accent);text-decoration:none}
+  .spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;
+        display:inline-block;animation:s .7s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🛡️</div>
+    <div>
+      <h1>open-routerich</h1>
+      <div class="sub">универсальный обход DPI для OpenWrt · <span id="hostline">…</span></div>
+    </div>
+  </header>
+
+  <div class="card">
+    <h2>Статус роутера</h2>
+    <div class="grid" id="stats"><div class="stat"><div class="k">загрузка…</div><div class="v"><span class="spin"></span></div></div></div>
+  </div>
+
+  <div class="card">
+    <h2>Настройки обхода</h2>
+    <div class="row">
+      <div><div class="lbl">QUIC-блок</div><div class="desc">REJECT UDP 80/443 lan→wan (заставляет TLS, чтобы youtubeUnblock сработал)</div></div>
+      <label class="sw"><input type="checkbox" id="opt_quic" checked><span></span></label>
+    </div>
+    <div class="row">
+      <div><div class="lbl">Гео-редирект доменов</div><div class="desc">50 доменов → локальный DoH-резолвер</div></div>
+      <label class="sw"><input type="checkbox" id="opt_redirect" checked><span></span></label>
+    </div>
+    <div class="row">
+      <div><div class="lbl">Статические A-записи</div><div class="desc">chatgpt/openai → 83.220.169.155</div></div>
+      <label class="sw"><input type="checkbox" id="opt_overrides" checked><span></span></label>
+    </div>
+    <div class="row">
+      <div><div class="lbl">DoH-резолвер</div><div class="desc">адрес локального DoH (immutable: AdGuard Home 127.0.0.1#5353)</div></div>
+      <input type="text" id="opt_doh" placeholder="авто">
+    </div>
+    <div class="btns">
+      <button class="primary" id="btnApply">⚡ Применить</button>
+      <button class="danger" id="btnOff">⏏ Откатить всё</button>
+      <button id="btnRefresh">↻ Обновить статус</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Модули</h2>
+    <div class="mods">
+      <div class="mod" data-mod="awg"><div class="t">AmneziaWG WARP</div><div class="d">туннель Cloudflare WARP (awg10)</div></div>
+      <div class="mod" data-mod="warp6"><div class="t">WARP6 (IPv6)</div><div class="d">IPv6 WARP поверх AmneziaWG</div></div>
+      <div class="mod" data-mod="podkop"><div class="t">Podkop</div><div class="d">доменный роутинг (нужен tproxy)</div></div>
+      <div class="mod" data-mod="proxy"><div class="t">opera-proxy + sing-box</div><div class="d">free-WARP цепочка :18080</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Журнал</h2>
+    <pre id="log">готова к работе, мяу.</pre>
+  </div>
+
+  <div class="foot">open-routerich · <a href="https://github.com/Sigmachan/open-routerich" target="_blank">github.com/Sigmachan/open-routerich</a></div>
+</div>
+
+<script>
+const API="cgi-bin/open-routerich";
+const $=s=>document.querySelector(s);
+const log=t=>{const l=$("#log");l.textContent=(l.textContent==="готова к работе, мяу."?"":l.textContent+"\n")+t;l.scrollTop=l.scrollHeight;};
+function pill(b){return b?'<span class="pill on">да</span>':'<span class="pill off">нет</span>';}
+
+async function api(action,body){
+  const opt=body?{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body}:{};
+  const r=await fetch(`${API}?action=${action}`,opt);
+  const t=await r.text();
+  try{return JSON.parse(t);}catch(e){return {raw:t};}
+}
+
+async function refresh(){
+  $("#stats").innerHTML='<div class="stat"><div class="k">загрузка…</div><div class="v"><span class="spin"></span></div></div>';
+  const s=await api("status");
+  if(s.raw){$("#stats").innerHTML='<div class="stat"><div class="k">ошибка</div><div class="v">'+s.raw.slice(0,120)+'</div></div>';return;}
+  $("#hostline").textContent=(s.model||"router")+" · OpenWrt "+(s.version||"?");
+  const mode=s.immutable==1?'<span class="pill warn">immutable</span>'+(s.entware==1?' <span class="pill on">Entware</span>':''):'<span class="pill on">normal</span>';
+  $("#stats").innerHTML=`
+    <div class="stat"><div class="k">Модель</div><div class="v">${s.model||"—"}</div></div>
+    <div class="stat"><div class="k">OpenWrt</div><div class="v">${s.version||"—"}</div></div>
+    <div class="stat"><div class="k">Архитектура</div><div class="v">${s.arch||"vendor"}</div></div>
+    <div class="stat"><div class="k">Режим</div><div class="v">${mode}</div></div>
+    <div class="stat"><div class="k">youtubeUnblock</div><div class="v">${pill(s.yu==1)}</div></div>
+    <div class="stat"><div class="k">https-dns-proxy</div><div class="v">${pill(s.doh==1)}</div></div>
+    <div class="stat"><div class="k">DNS-редирект</div><div class="v">${pill(s.redirect==1)}</div></div>
+    <div class="stat"><div class="k">QUIC-блок</div><div class="v">${pill(s.quic==1)}</div></div>`;
+  if(s.doh_addr)$("#opt_doh").placeholder=s.doh_addr;
+}
+
+function busy(b){document.querySelectorAll("button").forEach(x=>x.disabled=b);}
+
+$("#btnApply").onclick=async()=>{
+  busy(true);log("→ применяю настройки…");
+  const p=new URLSearchParams();
+  p.set("quic",$("#opt_quic").checked?1:0);
+  p.set("redirect",$("#opt_redirect").checked?1:0);
+  p.set("overrides",$("#opt_overrides").checked?1:0);
+  if($("#opt_doh").value.trim())p.set("doh_addr",$("#opt_doh").value.trim());
+  const r=await api("apply",p.toString());
+  log(r.log||r.raw||"готово");log("✓ применено.");busy(false);refresh();
+};
+$("#btnOff").onclick=async()=>{
+  if(!confirm("Откатить open-routerich? Восстановит бэкапы и остановит сервисы."))return;
+  busy(true);log("→ откат…");const r=await api("uninstall");log(r.log||r.raw||"готово");busy(false);refresh();
+};
+$("#btnRefresh").onclick=()=>refresh();
+document.querySelectorAll(".mod").forEach(m=>m.onclick=async()=>{
+  const name=m.dataset.mod;
+  if(!confirm("Запустить модуль: "+name+"?"))return;
+  busy(true);log("→ модуль "+name+"…");
+  const r=await api("module",new URLSearchParams({name}).toString());
+  log(r.log||r.raw||"готово");busy(false);refresh();
+});
+refresh();
+</script>
+</body>
+</html>
