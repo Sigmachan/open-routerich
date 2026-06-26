@@ -66,6 +66,7 @@ case "$ACTION" in
             warp6)  run_cmd sh "$ROOT/modules/warp6.sh" ;;
             podkop) run_cmd sh "$ROOT/modules/podkop.sh" ;;
             proxy)  run_cmd sh "$ROOT/modules/proxy.sh" ;;
+            zeroblock) run_cmd sh "$ROOT/modules/zeroblock.sh" --ipk-dir "$ROOT/vendor/zeroblock" ;;
             *)      emit "{\"log\":\"unknown module: $name\"}" ;;
         esac ;;
     *)

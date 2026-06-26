@@ -128,6 +128,7 @@ sh modules/awg-warp.sh            # AmneziaWG WARP (авто-генерация)
 sh modules/warp6.sh               # IPv6 WARP поверх AmneziaWG (после awg-warp)
 sh modules/podkop.sh              # podkop (официальный инсталлер) + routerich-роутинг; --profile main|second|youtube
 sh modules/proxy.sh               # opera-proxy (:18080) + sing-box (tproxy :1100) — free-WARP цепочка
+sh modules/zeroblock.sh --ipk-dir vendor/zeroblock   # routerich ZeroBlock: VLESS/sing-box tproxy + FakeIP (свой .ipk, opkg+mutable)
 ```
 
 - **doh-unpoison** — RKN травит DNS на :53 для ЛЮБОГО резолвера; поднимает локальный DoH и заворачивает dnsmasq на него (`noresolv`). Сентинел и watchdog-фоллбэк на ISP-DNS: LAN никогда не остаётся без резолва. Нужен `bind-dig` для health-проверки.
@@ -136,6 +137,7 @@ sh modules/proxy.sh               # opera-proxy (:18080) + sing-box (tproxy :110
 - **awg-warp** тянет `kmod-amneziawg`/`amneziawg-tools`/`luci` из [awg-openwrt](https://github.com/Slava-Shchipunov/awg-openwrt) строго под версию/ядро.
 - **podkop** ставит podkop официальным способом itdoginfo и применяет тюнингованный роутинг (youtube/rutracker/instagram/discord + second-профиль на `127.0.0.1:18080`).
 - **proxy** = opera-proxy + sing-box; пара к `podkop --profile second`.
+- **zeroblock** — тонкий установщик проприетарного **ZeroBlock** от routerich (sing-box/xray tproxy + FakeIP DNS): это и есть «свой VLESS-туннель» — единственный полный обход RKN-SNI на ECM/NSS-железе (локально-терминированный tproxy переживает оффлоад там, где десинк дох). Закрытый MIT-бинарь без публичного фида — кладёшь .ipk в `vendor/zeroblock/` (см. его README), модуль ставит с `--force-depends`, поднимает `sing-box`-движок и пресетит секцию (`--vless` / `--sub`). **Только opkg + мутабельный root**; на immutable Xiaomi не встанет (там `modules/proxy.sh`). Community-листы v2 требуют verified-routerich-устройство → на чужом железе v1 + GitHub-листы.
 
 ---
 
@@ -173,7 +175,9 @@ modules/awg-warp.sh         AmneziaWG WARP
 modules/warp6.sh            IPv6 WARP
 modules/podkop.sh           podkop + тюнингованный роутинг
 modules/proxy.sh            opera-proxy + sing-box
+modules/zeroblock.sh        тонкий установщик routerich ZeroBlock (VLESS/sing-box tproxy + FakeIP)
 config_files/               UCI-шаблоны + списки доменов
+vendor/zeroblock/           сюда кладёшь .ipk ZeroBlock (git-ignored; см. README внутри)
 webui/                      веб-панель в роутере (uhttpd + CGI, immutable-safe)
 gui/                        десктопный установщик (python stdlib, SSH)
 build/build-packages.sh     пересборка YU + amneziawg через OpenWrt SDK
